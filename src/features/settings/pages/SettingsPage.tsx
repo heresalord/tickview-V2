@@ -7,22 +7,46 @@ import { Spinner } from '../../../components/ui'
 
 export function SettingsPage() {
   const { profile } = useAuth()
-  const [activeTab, setActiveTab] = useState<'sla' | 'categories'>('sla')
+  const [activeTab, setActiveTab] = useState<'org' | 'sla' | 'categories'>('org')
   const [loading, setLoading] = useState(true)
 
   // State
   const [categories, setCategories] = useState<Category[]>([])
   const [slas, setSlas] = useState<SlaConfig[]>([])
+  const [orgCode, setOrgCode] = useState('')
+  
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [newCatDesc, setNewCatDesc] = useState('')
+
+  const handleSaveOrg = async () => {
+    setLoading(true)
+    const { error } = await supabase.from('organizations').update({
+      code: orgCode
+    }).eq('id', profile!.organization_id)
+    if (error) {
+      if (error.code === '23505') {
+        toast.error('Ce code est déjà utilisé par une autre organisation.')
+      } else {
+        toast.error('Erreur lors de la mise à jour du code.')
+      }
+    } else {
+      toast.success('Code organisation mis à jour.')
+    }
+    setLoading(false)
+  }
 
   useEffect(() => {
     async function load() {
       if (!profile?.organization_id) return
       
-      const [catRes, slaRes] = await Promise.all([
+      const [orgRes, catRes, slaRes] = await Promise.all([
+        supabase.from('organizations').select('code').eq('id', profile.organization_id).single(),
         supabase.from('categories').select('*').eq('organization_id', profile.organization_id).order('name'),
         supabase.from('sla_configs').select('*').eq('organization_id', profile.organization_id)
       ])
 
+      if (orgRes.data) setOrgCode(orgRes.data.code)
       setCategories((catRes.data ?? []) as Category[])
       
       // Initialize SLAs if none exist for the 4 priorities
@@ -35,7 +59,6 @@ export function SettingsPage() {
           organization_id: profile.organization_id,
           priority: p,
           max_hours: p === 'urgente' ? 4 : p === 'haute' ? 12 : p === 'normale' ? 48 : 72,
-          escalate_to_role: 'expert' as UserRole
         }
       })
       setSlas(mergedSlas)
@@ -51,18 +74,49 @@ export function SettingsPage() {
         await supabase.from('sla_configs').insert({
           organization_id: sla.organization_id,
           priority: sla.priority,
-          max_hours: sla.max_hours,
-          escalate_to_role: sla.escalate_to_role
+          response_time_hours: sla.max_hours,
         })
       } else {
         await supabase.from('sla_configs').update({
-          max_hours: sla.max_hours,
-          escalate_to_role: sla.escalate_to_role
+          response_time_hours: sla.max_hours,
         }).eq('id', sla.id)
       }
     }
     toast.success('Configuration SLA enregistrée.')
     setLoading(false)
+  }
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCatName.trim()) return
+    setLoading(true)
+    const { data, error } = await supabase.from('categories').insert({
+      organization_id: profile!.organization_id,
+      name: newCatName.trim(),
+      description: newCatDesc.trim() || null,
+      is_active: true
+    }).select().single()
+    
+    if (error) {
+      toast.error(error.message)
+    } else if (data) {
+      setCategories([...categories, data as Category])
+      toast.success('Catégorie créée.')
+      setShowCategoryModal(false)
+      setNewCatName('')
+      setNewCatDesc('')
+    }
+    setLoading(false)
+  }
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!window.confirm('Voulez-vous supprimer cette catégorie ?')) return
+    const { error } = await supabase.from('categories').delete().eq('id', id)
+    if (error) toast.error(error.message)
+    else {
+      toast.success('Catégorie supprimée.')
+      setCategories(categories.filter(c => c.id !== id))
+    }
   }
 
   if (loading) return <div className="flex justify-center py-24"><Spinner /></div>
@@ -75,6 +129,14 @@ export function SettingsPage() {
       </div>
 
       <div className="flex border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('org')}
+          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'org' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Organisation
+        </button>
         <button
           onClick={() => setActiveTab('sla')}
           className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
@@ -93,6 +155,36 @@ export function SettingsPage() {
         </button>
       </div>
 
+      {activeTab === 'org' && (
+        <div className="card space-y-6 animate-fade-in">
+          <div>
+            <h2 className="font-semibold text-slate-800">Code d'accès organisation</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Ce code unique permet à vos collaborateurs et clients de rejoindre automatiquement votre organisation lors de leur inscription.
+            </p>
+          </div>
+
+          <div className="max-w-sm">
+            <label className="field-label">Code d'accès</label>
+            <input
+              className="field-input font-mono uppercase tracking-widest text-lg"
+              value={orgCode}
+              onChange={e => setOrgCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
+              maxLength={12}
+            />
+            <p className="text-xs text-slate-400 mt-2">
+              ⚠️ Modifier ce code n'affecte pas les comptes existants. Les nouveaux inscrits devront utiliser ce nouveau code.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <button onClick={handleSaveOrg} disabled={loading || !orgCode.trim()} className="btn-primary">
+              <Save size={16} /> Enregistrer
+            </button>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'sla' && (
         <div className="card space-y-6 animate-fade-in">
           <div>
@@ -105,8 +197,8 @@ export function SettingsPage() {
 
           <div className="space-y-4">
             {slas.map((sla, i) => (
-              <div key={sla.priority} className="flex items-center gap-4 p-4 border border-slate-100 rounded-xl bg-slate-50/50">
-                <div className="w-24">
+              <div key={sla.priority} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border border-slate-100 rounded-xl bg-slate-50/50">
+                <div className="sm:w-24">
                   <span className="text-sm font-semibold capitalize text-slate-700">{sla.priority}</span>
                 </div>
                 <div className="flex-1 flex items-center gap-2">
@@ -122,22 +214,6 @@ export function SettingsPage() {
                     }}
                   />
                   <span className="text-sm text-slate-500">heures max</span>
-                </div>
-                <div className="flex-1 flex items-center gap-2">
-                  <span className="text-sm text-slate-500">Escalader vers :</span>
-                  <select
-                    className="field-select w-40"
-                    value={sla.escalate_to_role || ''}
-                    onChange={e => {
-                      const newSlas = [...slas]
-                      newSlas[i].escalate_to_role = (e.target.value || null) as UserRole
-                      setSlas(newSlas)
-                    }}
-                  >
-                    <option value="">Aucun</option>
-                    <option value="expert">Expert</option>
-                    <option value="admin">Administrateur</option>
-                  </select>
                 </div>
               </div>
             ))}
@@ -160,8 +236,8 @@ export function SettingsPage() {
                 Gérez les catégories disponibles lorsque vos clients créent un ticket.
               </p>
             </div>
-            <button className="btn-secondary btn-sm" onClick={() => toast('Bientôt disponible !')}>
-              <Plus size={14} /> Nouvelle Catégorie
+            <button className="btn-secondary btn-sm px-2 sm:px-3" onClick={() => setShowCategoryModal(true)}>
+              <Plus size={16} /> <span className="hidden sm:inline">Nouvelle Catégorie</span>
             </button>
           </div>
 
@@ -191,7 +267,7 @@ export function SettingsPage() {
                         </span>
                       </td>
                       <td className="text-right">
-                        <button className="text-slate-400 hover:text-red-500 transition-colors p-1" onClick={() => toast('Bientôt disponible !')}>
+                        <button className="text-slate-400 hover:text-red-500 transition-colors p-1" onClick={() => handleDeleteCategory(cat.id)}>
                           <Trash2 size={16} />
                         </button>
                       </td>
@@ -200,6 +276,44 @@ export function SettingsPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Category Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-slide-up">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-lg text-slate-800">Nouvelle Catégorie</h3>
+              <button onClick={() => setShowCategoryModal(false)} className="text-slate-400 hover:text-slate-600">
+                <Plus className="rotate-45" size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateCategory} className="p-6 space-y-4">
+              <div>
+                <label className="field-label">Nom de la catégorie</label>
+                <input 
+                  className="field-input" 
+                  value={newCatName} 
+                  onChange={e => setNewCatName(e.target.value)} 
+                  required 
+                />
+              </div>
+              <div>
+                <label className="field-label">Description (Optionnelle)</label>
+                <textarea 
+                  className="field-textarea" 
+                  rows={2}
+                  value={newCatDesc} 
+                  onChange={e => setNewCatDesc(e.target.value)} 
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowCategoryModal(false)} className="btn-secondary">Annuler</button>
+                <button type="submit" className="btn-primary">Créer</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

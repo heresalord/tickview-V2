@@ -3,25 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  @font-face {
-    font-family: 'Circular Std';
-    src: local('Circular Std Book'), url('/fonts/CircularStd-Book.woff2') format('woff2');
-    font-weight: 400;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'Circular Std';
-    src: local('Circular Std Medium'), url('/fonts/CircularStd-Medium.woff2') format('woff2');
-    font-weight: 500;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'Circular Std';
-    src: local('Circular Std Bold'), url('/fonts/CircularStd-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-  }
-
   :root {
     --brand:     #0e87e3;
     --brand-dk:  #0268c1;
@@ -35,18 +16,17 @@
   * { box-sizing: border-box; }
 
   html {
-    font-family: 'Circular Std', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     font-size: 15px;
     color: var(--text);
     background: var(--surface);
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3 { font-family: 'Circular Std', system-ui, sans-serif; }
+  h1, h2, h3 { font-family: 'Inter', system-ui, sans-serif; }
 
   ::selection { background: #baddfd; }
 
-  /* Custom scrollbar */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
@@ -57,13 +37,12 @@
   /* ── Buttons ── */
   .btn {
     @apply inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius)]
-           font-body font-medium text-sm transition-all duration-150
+           font-medium text-sm transition-all duration-150
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 active:scale-[0.98]
-           shadow-sm;
+    @apply btn bg-brand-600 text-white hover:bg-brand-700 active:scale-[0.98] shadow-sm;
   }
   .btn-secondary {
     @apply btn bg-white text-slate-700 border border-slate-200
@@ -106,20 +85,15 @@
     @apply card transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 cursor-pointer;
   }
 
-  /* ── Badges (status / priority) ── */
+  /* ── Badges ── */
   .badge {
     @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 
-  /* Status */
-  .badge-ouvert      { @apply badge bg-slate-100 text-slate-700; }
-  .badge-en_cours    { @apply badge bg-blue-100 text-blue-700; }
-  .badge-en_attente  { @apply badge bg-amber-100 text-amber-700; }
-  .badge-reassigne   { @apply badge bg-purple-100 text-purple-700; }
-  .badge-resolu      { @apply badge bg-green-100 text-green-700; }
-  .badge-cloture     { @apply badge bg-slate-200 text-slate-500; }
+  .badge-en_attente { @apply badge bg-amber-100 text-amber-700; }
+  .badge-en_cours   { @apply badge bg-blue-100  text-blue-700; }
+  .badge-cloture    { @apply badge bg-slate-200  text-slate-500; }
 
-  /* Priority */
   .badge-basse    { @apply badge bg-slate-100 text-slate-600; }
   .badge-normale  { @apply badge bg-sky-100 text-sky-700; }
   .badge-haute    { @apply badge bg-orange-100 text-orange-700; }
@@ -143,22 +117,16 @@
   }
 
   /* ── Page header ── */
-  .page-header {
-    @apply mb-8;
-  }
-  .page-title {
-    @apply text-3xl font-display text-slate-900;
-  }
-  .page-subtitle {
-    @apply text-sm text-slate-500 mt-1;
-  }
+  .page-header { @apply mb-8; }
+  .page-title  { @apply text-3xl font-bold text-slate-900; }
+  .page-subtitle { @apply text-sm text-slate-500 mt-1; }
 
   /* ── Stat card ── */
   .stat-card {
     @apply card flex flex-col gap-1;
   }
   .stat-value {
-    @apply text-3xl font-display text-slate-900 leading-none;
+    @apply text-3xl font-bold text-slate-900 leading-none;
   }
   .stat-label {
     @apply text-xs font-medium text-slate-500 uppercase tracking-wide;

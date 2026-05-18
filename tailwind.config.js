@@ -4,9 +4,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['"Circular Std"', 'system-ui', 'sans-serif'],
-        body: ['"Circular Std"', 'system-ui', 'sans-serif'],
-        mono: ['"Source Code Pro"', 'monospace'],
+        display: ['Inter', 'system-ui', 'sans-serif'],
+        body:    ['Inter', 'system-ui', 'sans-serif'],
+        mono:    ['"Source Code Pro"', 'monospace'],
       },
       colors: {
         brand: {
@@ -34,17 +34,17 @@ export default {
         },
       },
       boxShadow: {
-        card: '0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07)',
+        card:       '0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07)',
         'card-hover': '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)',
-        focus: '0 0 0 3px rgb(14 135 227 / 0.25)',
+        focus:      '0 0 0 3px rgb(14 135 227 / 0.25)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.4s ease both',
-        'slide-up': 'slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both',
-        'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
+        'fade-in':   'fadeIn 0.4s ease both',
+        'slide-up':  'slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both',
+        'pulse-soft':'pulseSoft 2s ease-in-out infinite',
       },
       keyframes: {
-        fadeIn:    { from: { opacity: 0 },                  to: { opacity: 1 } },
+        fadeIn:    { from: { opacity: 0 },                              to: { opacity: 1 } },
         slideUp:   { from: { opacity: 0, transform: 'translateY(12px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
         pulseSoft: { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.6 } },
       },

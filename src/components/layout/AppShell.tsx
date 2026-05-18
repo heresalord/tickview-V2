@@ -3,67 +3,46 @@ import { NavLink, Link, useNavigate, Outlet } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   LayoutDashboard, Ticket, Users, Settings, LogOut,
-  Menu, X, ShieldCheck,
-  ClipboardList, PlusCircle, HelpCircle, Building2,
+  Menu, X, ClipboardList, PlusCircle, HelpCircle, Building2,
 } from 'lucide-react'
 import { useAuth } from '../../features/auth/hooks/useAuth'
 import { Avatar } from '../ui'
-import { NotificationMenu } from '../../features/notifications/components/NotificationMenu'
+import { NotificationBell } from '../notifications/NotificationBell'
 import type { UserRole } from '../../lib/supabase'
 
 interface NavItem { label: string; to: string; icon: React.ReactNode }
 
 function getNavItems(role: UserRole): NavItem[] {
-  const base: NavItem[] = []
+  if (role === 'client') return [
+    { label: 'Mes plaintes',     to: '/client',     icon: <ClipboardList size={18} /> },
+    { label: 'Nouvelle plainte', to: '/client/new', icon: <PlusCircle size={18} /> },
+    { label: 'FAQ',              to: '/client/faq', icon: <HelpCircle size={18} /> },
+  ]
 
-  if (role === 'client') {
-    base.push(
-      { label: 'Mes plaintes',      to: '/client',        icon: <ClipboardList size={18} /> },
-      { label: 'Nouvelle plainte',  to: '/client/new',    icon: <PlusCircle size={18} /> },
-      { label: 'FAQ',               to: '/client/faq',    icon: <HelpCircle size={18} /> },
-    )
-  }
+  if (role === 'agent') return [
+    { label: 'Tableau de bord', to: '/agent',         icon: <LayoutDashboard size={18} /> },
+    { label: 'Tickets',         to: '/agent/tickets', icon: <Ticket size={18} /> },
+  ]
 
-  if (role === 'agent') {
-    base.push(
-      { label: 'Tableau de bord',  to: '/agent',          icon: <LayoutDashboard size={18} /> },
-      { label: 'Tickets',          to: '/agent/tickets',  icon: <Ticket size={18} /> },
-    )
-  }
+  if (role === 'expert') return [
+    { label: 'Tableau de bord',  to: '/expert',          icon: <LayoutDashboard size={18} /> },
+    { label: 'Tickets assignés', to: '/expert/tickets',  icon: <Ticket size={18} /> },
+  ]
 
-  if (role === 'expert') {
-    base.push(
-      { label: 'Tableau de bord',  to: '/expert',           icon: <LayoutDashboard size={18} /> },
-      { label: 'Tickets assignés', to: '/expert/tickets',   icon: <Ticket size={18} /> },
-    )
-  }
+  if (role === 'admin') return [
+    { label: 'Organisations',  to: '/admin',          icon: <Building2 size={18} /> },
+    { label: 'Utilisateurs',   to: '/admin/users',    icon: <Users size={18} /> },
+    { label: 'Paramètres',     to: '/admin/settings', icon: <Settings size={18} /> },
+  ]
 
-  if (role === 'admin') {
-    base.push(
-      { label: 'Tableau de bord',  to: '/admin',            icon: <LayoutDashboard size={18} /> },
-      { label: 'Tickets',          to: '/admin/tickets',    icon: <Ticket size={18} /> },
-      { label: 'Utilisateurs',     to: '/admin/users',      icon: <Users size={18} /> },
-      { label: 'Paramètres',       to: '/admin/settings',   icon: <Settings size={18} /> },
-    )
-  }
-
-  if (role === 'super_admin') {
-    base.push(
-      { label: 'Organisations',    to: '/super',            icon: <Building2 size={18} /> },
-      { label: 'Tous les users',   to: '/super/users',      icon: <Users size={18} /> },
-      { label: 'Feedbacks',        to: '/super/feedback',   icon: <ShieldCheck size={18} /> },
-    )
-  }
-
-  return base
+  return []
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
-  client:      'Usager',
-  agent:       'Agent',
-  expert:      'Expert',
-  admin:       'Administrateur',
-  super_admin: 'Super Admin',
+  client: 'Usager',
+  agent:  'Agent',
+  expert: 'Expert',
+  admin:  'Administrateur',
 }
 
 function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -156,7 +135,7 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         <Menu size={20} />
       </button>
       <div className="flex-1" />
-      <NotificationMenu />
+      <NotificationBell />
       <Link to="/profile" className="flex items-center gap-2 cursor-pointer group hover:bg-slate-50 p-1.5 rounded-lg transition-colors">
         <Avatar name={`${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`} size="sm" />
         <span className="text-sm font-medium text-slate-700 hidden sm:block">

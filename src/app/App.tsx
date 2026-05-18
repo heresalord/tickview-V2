@@ -22,15 +22,9 @@ import { AgentDashboard } from '../features/dashboard/pages/AgentDashboard'
 // Expert
 import { ExpertDashboard } from '../features/dashboard/pages/ExpertDashboard'
 
-// Admin
-import { UserManagementPage } from '../features/users/pages/UserManagementPage'
 import { AdminDashboard } from '../features/dashboard/pages/AdminDashboard'
 import { SettingsPage } from '../features/settings/pages/SettingsPage'
 
-// Placeholders (Day 3–4)
-import {
-  SuperAdminDashboard,
-} from '../components/feedback/Placeholders'
 
 import type { UserRole } from '../lib/supabase'
 
@@ -42,7 +36,6 @@ const ROLE_HOME: Record<UserRole, string> = {
   agent:       '/agent',
   expert:      '/expert',
   admin:       '/admin',
-  super_admin: '/super',
 }
 
 export default function App() {
@@ -118,25 +111,12 @@ export default function App() {
             <Route path="/admin"
               element={<RoleRoute roles={['admin']}><AdminDashboard /></RoleRoute>}
             />
-            <Route path="/admin/tickets"
-              element={<RoleRoute roles={['admin']}><AgentDashboard /></RoleRoute>}
-            />
-            <Route path="/admin/tickets/:id"
-              element={<RoleRoute roles={['admin']}><TicketDetailPage /></RoleRoute>}
-            />
+
             <Route path="/admin/users"
-              element={<RoleRoute roles={['admin']}><UserManagementPage /></RoleRoute>}
+              element={<RoleRoute roles={['admin']}><AdminDashboard /></RoleRoute>}
             />
             <Route path="/admin/settings"
               element={<RoleRoute roles={['admin']}><SettingsPage /></RoleRoute>}
-            />
-
-            {/* ── Super Admin ── */}
-            <Route path="/super"
-              element={<RoleRoute roles={['super_admin']}><SuperAdminDashboard /></RoleRoute>}
-            />
-            <Route path="/super/users"
-              element={<RoleRoute roles={['super_admin']}><div className="card"><p className="text-slate-500">Tous les utilisateurs — Jour 3</p></div></RoleRoute>}
             />
 
             {/* ── Shared ── */}

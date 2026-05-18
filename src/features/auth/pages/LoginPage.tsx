@@ -7,7 +7,7 @@ import type { UserRole } from '../../../lib/supabase'
 
 const ROLE_HOME: Record<UserRole, string> = {
   client: '/client', agent: '/agent', expert: '/expert',
-  admin: '/admin', super_admin: '/super',
+  admin: '/admin',
 }
 
 export function LoginPage() {
@@ -27,6 +27,15 @@ export function LoginPage() {
     if (!authLoading && session && role) {
       navigate(ROLE_HOME[role as UserRole] || '/client', { replace: true })
     }
+    // Auth resolved but profile missing in DB — unblock the form
+    if (!authLoading && session && !role) {
+      toast.error('Profil introuvable. Contactez votre administrateur.')
+      setLoading(false)
+    }
+    // Auth resolved with no session (e.g. bad credentials flow completed)
+    if (!authLoading && !session) {
+      setLoading(false)
+    }
   }, [authLoading, session, role, navigate])
 
   const [email, setEmail]       = useState('')
@@ -37,9 +46,14 @@ export function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setLoading(true)
+
+    // Safety valve: if auth state never resolves (rare edge case), unblock after 12s
+    const safetyTimer = setTimeout(() => setLoading(false), 12_000)
+
     try {
       const { error } = await signIn(email, password)
       if (error) {
+        clearTimeout(safetyTimer)
         toast.error('Email ou mot de passe incorrect.')
         setLoading(false)
       }
@@ -48,6 +62,7 @@ export function LoginPage() {
       // We intentionally leave loading=true during that transition so the
       // button doesn't flicker back to "Se connecter" before navigating.
     } catch {
+      clearTimeout(safetyTimer)
       toast.error('Une erreur est survenue. Veuillez réessayer.')
       setLoading(false)
     }
@@ -114,13 +129,6 @@ export function LoginPage() {
           </p>
         </div>
 
-        <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-2xl p-4 text-white/70 text-xs space-y-1">
-          <p className="font-semibold text-white/90 mb-2">Comptes de démo :</p>
-          <p>👤 client@tickview.bj — Client123!</p>
-          <p>🎯 agent@tickview.bj  — Agent123!</p>
-          <p>🔬 expert@tickview.bj — Expert123!</p>
-          <p>⚙️  admin@tickview.bj  — Admin123!</p>
-        </div>
       </div>
     </div>
   )

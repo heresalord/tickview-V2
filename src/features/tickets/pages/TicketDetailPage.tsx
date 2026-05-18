@@ -18,15 +18,13 @@ const MESSAGE_TYPES: ActionType[] = ['reponse', 'demande_info', 'info_recue']
 // ─── Action type labels ───────────────────────────────────────────────────────
 const ACTION_LABELS: Record<ActionType, string> = {
   creation:            'Ticket créé',
-  prise_en_charge:     'Pris en charge',
+  prise_en_charge:     'Ticket ouvert',
   reponse:             'Réponse',
-  reassignation:       'Réassigné',
+  reassignation:       'Réassigné à un expert',
   demande_info:        'Informations demandées',
   info_recue:          'Informations reçues',
-  resolution:          'Marqué résolu',
   cloture:             'Clôturé',
-  reouverture:         'Rouvert',
-  escalade:            'Escalade déclenchée',
+  escalade:            'Escalade SLA',
   commentaire_interne: 'Note interne',
 }
 
@@ -37,9 +35,7 @@ const ACTION_COLORS: Record<ActionType, string> = {
   reassignation:       'bg-purple-500',
   demande_info:        'bg-amber-500',
   info_recue:          'bg-amber-400',
-  resolution:          'bg-green-500',
   cloture:             'bg-slate-600',
-  reouverture:         'bg-orange-500',
   escalade:            'bg-red-500',
   commentaire_interne: 'bg-slate-300',
 }
@@ -65,11 +61,11 @@ function SlaCountdown({ deadline, breached }: { deadline: string; breached: bool
 function ConversationTimeline({
   actions,
   profiles,
-  clientId,
+  currentUserId,
 }: {
   actions: TicketAction[]
   profiles: Record<string, Profile>
-  clientId: string
+  currentUserId: string
 }) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -85,7 +81,7 @@ function ConversationTimeline({
         const actor = profiles[action.actor_id]
         const name = actor ? `${actor.first_name} ${actor.last_name}` : 'Système'
         const isMessage = MESSAGE_TYPES.includes(action.action_type)
-        const isFromClient = action.actor_id === clientId
+        const isCurrentUser = action.actor_id === currentUserId
         const isLast = i === actions.length - 1
 
         // ── Chat bubble for messages ──────────────────────────────────────
@@ -93,13 +89,13 @@ function ConversationTimeline({
           return (
             <div
               key={action.id}
-              className={`flex gap-2.5 ${isFromClient ? 'flex-row-reverse' : 'flex-row'}`}
+              className={`flex gap-2.5 ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}
             >
               <div className="flex-shrink-0 mt-1">
                 <Avatar name={name} size="sm" />
               </div>
-              <div className={`max-w-[75%] space-y-1 ${isFromClient ? 'items-end' : 'items-start'} flex flex-col`}>
-                <div className={`flex items-center gap-2 ${isFromClient ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`max-w-[75%] space-y-1 ${isCurrentUser ? 'items-end' : 'items-start'} flex flex-col`}>
+                <div className={`flex items-center gap-2 ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
                   <span className="text-xs font-medium text-slate-600">{name}</span>
                   {action.is_internal && (
                     <span className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-1.5 py-0.5">
@@ -112,7 +108,7 @@ function ConversationTimeline({
                 </div>
                 <div
                   className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${
-                    isFromClient
+                    isCurrentUser
                       ? 'bg-brand-600 text-white rounded-tr-sm'
                       : action.is_internal
                       ? 'bg-amber-50 text-amber-900 border border-amber-200 rounded-tl-sm'
@@ -168,7 +164,7 @@ interface ActionPanelProps {
 }
 
 function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
-  const { user, role } = useAuth()
+  const { user, role, profile } = useAuth()
   const [comment, setComment]       = useState('')
   const [isInternal, setIsInternal] = useState(false)
   const [reassignTo, setReassignTo] = useState('')
@@ -176,7 +172,6 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
   const [mode, setMode]             = useState<'reply' | 'reassign' | null>(null)
 
   const isMine       = ticket.assigned_to === user?.id
-  const isUnassigned = !ticket.assigned_to
   const isClosed     = ticket.status === 'cloture'
 
   const writeAction = async (
@@ -203,15 +198,28 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
     if (error) throw error
   }
 
-  const handleTakeOwnership = async () => {
+  const handleOpenTicket = async () => {
     setLoading(true)
     try {
-      await updateTicket({ assigned_to: user!.id, status: 'en_cours' })
-      await writeAction('prise_en_charge', 'Ticket pris en charge.', false, { to_status: 'en_cours' })
-      toast.success('Ticket pris en charge.')
+      await updateTicket({ status: 'en_cours' })
+      await writeAction('prise_en_charge', 'Ticket ouvert.', false, { to_status: 'en_cours' })
+      toast.success('Ticket ouvert.')
       onActionDone()
     } catch (e: any) {
       toast.error(`Erreur : ${e?.message ?? 'inconnue'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSetPriority = async (priority: string) => {
+    setLoading(true)
+    try {
+      await updateTicket({ priority })
+      toast.success('Priorité mise à jour.')
+      onActionDone()
+    } catch (e: any) {
+      toast.error(`Erreur : ${e?.message}`)
     } finally {
       setLoading(false)
     }
@@ -221,8 +229,9 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
     if (!comment.trim()) return
     setLoading(true)
     try {
+      const patch = ticket.status === 'en_attente' ? { status: 'en_cours' } : {}
       await writeAction('reponse', comment.trim(), isInternal, {})
-      await updateTicket({})
+      await updateTicket(patch)
       toast.success(isInternal ? 'Note interne ajoutée.' : 'Réponse envoyée au client.')
       setComment('')
       setMode(null)
@@ -239,12 +248,12 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
     setLoading(true)
     try {
       const target = agents.find(a => a.id === reassignTo)
-      await updateTicket({ assigned_to: reassignTo, status: 'reassigne' })
+      await updateTicket({ assigned_to: reassignTo, status: 'en_cours' })
       await writeAction(
         'reassignation',
         `Réassigné à ${target?.first_name} ${target?.last_name}.`,
         false,
-        { to_status: 'reassigne', assigned_to: reassignTo },
+        { to_status: 'en_cours', assigned_to: reassignTo },
       )
       toast.success('Ticket réassigné.')
       setReassignTo('')
@@ -257,25 +266,16 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
     }
   }
 
-  const handleResolve = async () => {
-    setLoading(true)
-    try {
-      await updateTicket({ status: 'resolu' })
-      await writeAction('resolution', 'Ticket marqué résolu.', false, { to_status: 'resolu' })
-      toast.success('Ticket marqué comme résolu.')
-      onActionDone()
-    } catch (e: any) {
-      toast.error(`Erreur : ${e?.message ?? 'inconnue'}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleClose = async () => {
     setLoading(true)
     try {
-      await updateTicket({ status: 'cloture' })
-      await writeAction('cloture', 'Ticket clôturé.', false, { to_status: 'cloture' })
+      await updateTicket({ status: 'cloture', closed_at: new Date().toISOString() })
+      await writeAction(
+        'cloture',
+        `Ticket clôturé par ${profile?.first_name} ${profile?.last_name}.`,
+        false,
+        { to_status: 'cloture' }
+      )
       toast.success('Ticket clôturé.')
       onActionDone()
     } catch (e: any) {
@@ -292,7 +292,7 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
       await writeAction(
         'reponse',
         comment.trim() || "Intervention technique terminée. Ticket retourné à l'agent.",
-        false,
+        isInternal,
         { to_status: 'en_cours' },
       )
       toast.success('Ticket retourné à la file agent.')
@@ -319,11 +319,27 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
     <div className="card space-y-4">
       <h3 className="font-semibold text-slate-800 text-sm">Actions</h3>
 
-      {(isUnassigned || (!isMine && role !== 'expert')) && (
-        <button onClick={handleTakeOwnership} disabled={loading} className="btn-primary w-full justify-center">
-          <Unlock size={15} /> Prendre en charge
+      {ticket.status === 'en_attente' && ticket.assigned_to === user?.id && (
+        <button onClick={handleOpenTicket} disabled={loading} className="btn-primary w-full justify-center">
+          <Unlock size={15} /> Ouvrir le ticket
         </button>
       )}
+
+      {/* Priority Dropdown available anytime */}
+      <div>
+        <label className="field-label text-xs">Priorité</label>
+        <select
+          className="field-select text-sm"
+          value={ticket.priority}
+          onChange={e => handleSetPriority(e.target.value)}
+          disabled={loading}
+        >
+          <option value="basse">Basse</option>
+          <option value="normale">Normale</option>
+          <option value="haute">Haute</option>
+          <option value="urgente">Urgente</option>
+        </select>
+      </div>
 
       {mode === 'reply' ? (
         <div className="space-y-2">
@@ -347,6 +363,11 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
               </button>
             </div>
           </div>
+          {role === 'expert' && (
+            <button onClick={handleReturnToAgent} disabled={loading} className="btn-secondary w-full justify-center text-purple-600 hover:bg-purple-50 mt-2">
+              <RotateCcw size={15} /> Envoyer le message et retourner à la file agent
+            </button>
+          )}
         </div>
       ) : (
         <button onClick={() => setMode('reply')} className="btn-secondary w-full justify-center">
@@ -359,7 +380,7 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
           <select className="field-select text-sm" value={reassignTo} onChange={e => setReassignTo(e.target.value)}>
             <option value="">Choisir un assigné…</option>
             {agents
-              .filter(a => (role === 'admin' ? true : a.role === 'expert') && a.id !== user?.id)
+              .filter(a => a.role === 'expert' && a.id !== user?.id)
               .map(a => (
                 <option key={a.id} value={a.id}>
                   {a.first_name} {a.last_name} ({a.role})
@@ -373,31 +394,13 @@ function AgentActionPanel({ ticket, agents, onActionDone }: ActionPanelProps) {
         </div>
       ) : (role === 'agent' || role === 'admin') && (
         <button onClick={() => setMode('reassign')} className="btn-secondary w-full justify-center text-purple-600 hover:bg-purple-50">
-          <ChevronDown size={15} /> Assigner / Réassigner
+          <ChevronDown size={15} /> Réassigner à un expert
         </button>
       )}
 
-      {role === 'expert' && (
-        <div className="space-y-2">
-          <textarea
-            className="field-textarea text-sm"
-            rows={3}
-            placeholder="Solution technique apportée (optionnel)…"
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-          />
-          <button onClick={handleReturnToAgent} disabled={loading} className="btn-secondary w-full justify-center text-purple-600 hover:bg-purple-50">
-            <RotateCcw size={15} /> Retourner à la file agent
-          </button>
-        </div>
-      )}
+
 
       <div className="flex gap-2 pt-1 border-t border-slate-100">
-        {ticket.status !== 'resolu' && (
-          <button onClick={handleResolve} disabled={loading} className="btn-secondary flex-1 justify-center text-green-600 hover:bg-green-50">
-            <CheckCircle2 size={15} /> Marquer résolu
-          </button>
-        )}
         <button onClick={handleClose} disabled={loading} className="btn-danger flex-1 justify-center">
           <XCircle size={15} /> Clôturer
         </button>
@@ -412,7 +415,7 @@ function ClientReplyBox({ ticket, onDone }: { ticket: TicketFull; onDone: () => 
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (ticket.status === 'cloture' || ticket.status === 'resolu') return null
+  if (ticket.status === 'cloture') return null
 
   const handleReply = async () => {
     if (!comment.trim()) return
@@ -503,7 +506,7 @@ function SatisfactionForm({ ticket, onDone }: { ticket: TicketFull; onDone: () =
     )
   }
 
-  if (ticket.status !== 'resolu' && ticket.status !== 'cloture') return null
+  if (ticket.status !== 'cloture') return null
 
   const handleSubmit = async () => {
     if (!score) return
@@ -595,7 +598,6 @@ export function TicketDetailPage() {
         .select('*')
         .eq('organization_id', (t as TicketFull).organization_id)
         .in('role', ['agent', 'expert'])
-        .eq('is_active', true)
       setAgents((staff ?? []) as Profile[])
     }
 
@@ -676,7 +678,7 @@ export function TicketDetailPage() {
             <ConversationTimeline
               actions={actions}
               profiles={profiles}
-              clientId={clientId}
+              currentUserId={user?.id || ''}
             />
           </div>
 
@@ -719,12 +721,6 @@ export function TicketDetailPage() {
                 <span className="text-slate-400">Créé</span>
                 <span>{format(new Date(ticket.created_at), 'dd MMM yyyy', { locale: fr })}</span>
               </div>
-              {ticket.resolved_at && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">Résolu</span>
-                  <span>{format(new Date(ticket.resolved_at), 'dd MMM yyyy', { locale: fr })}</span>
-                </div>
-              )}
               {ticket.closed_at && (
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-400">Clôturé</span>

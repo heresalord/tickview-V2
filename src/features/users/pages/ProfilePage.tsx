@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { User, Lock, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../../lib/supabase'
@@ -11,7 +11,16 @@ export function ProfilePage() {
   const [firstName, setFirstName] = useState(profile?.first_name || '')
   const [lastName, setLastName] = useState(profile?.last_name || '')
   const [phone, setPhone] = useState(profile?.phone || '')
+  const [orgName, setOrgName] = useState<string>('')
   const [loadingInfo, setLoadingInfo] = useState(false)
+
+  // Fetch org name on mount
+  useEffect(() => {
+    if (profile?.organization_id) {
+      supabase.from('organizations').select('name').eq('id', profile.organization_id).single()
+        .then(({ data }) => { if (data) setOrgName(data.name) })
+    }
+  }, [profile])
 
   // State for Password
   const [password, setPassword] = useState('')
@@ -79,7 +88,7 @@ export function ProfilePage() {
               <h2>Informations Personnelles</h2>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="field-label">Prénom</label>
                 <input 
@@ -122,6 +131,17 @@ export function ProfilePage() {
               <p className="text-xs text-slate-400 mt-1">L'adresse email ne peut pas être modifiée ici.</p>
             </div>
 
+            <div>
+              <label className="field-label">Organisation</label>
+              <input 
+                type="text" 
+                className="field-input bg-slate-50 text-slate-500 cursor-not-allowed font-medium" 
+                value={orgName || 'Chargement...'} 
+                disabled 
+              />
+              <p className="text-xs text-slate-400 mt-1">Votre organisation de rattachement.</p>
+            </div>
+
             <div className="pt-2">
               <button 
                 onClick={handleUpdateInfo} 
@@ -140,7 +160,7 @@ export function ProfilePage() {
               <h2>Sécurité</h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="field-label">Nouveau mot de passe</label>
                 <input 

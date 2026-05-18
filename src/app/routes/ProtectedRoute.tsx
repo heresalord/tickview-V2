@@ -3,6 +3,13 @@ import { useAuth } from '../../features/auth/hooks/useAuth'
 import { PageLoader } from '../../components/ui'
 import type { UserRole } from '../../lib/supabase'
 
+const ROLE_HOME: Record<UserRole, string> = {
+  client: '/client',
+  agent:  '/agent',
+  expert: '/expert',
+  admin:  '/admin',
+}
+
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
   const location = useLocation()
@@ -25,14 +32,7 @@ export function RoleRoute({
   if (loading) return <PageLoader />
 
   if (!role || !roles.includes(role)) {
-    const HOME: Record<UserRole, string> = {
-      client:      '/client',
-      agent:       '/agent',
-      expert:      '/expert',
-      admin:       '/admin',
-      super_admin: '/super',
-    }
-    const dest = role ? HOME[role] : '/login'
+    const dest = role && ROLE_HOME[role] ? ROLE_HOME[role] : '/login'
     return <Navigate to={dest} state={{ from: location }} replace />
   }
 

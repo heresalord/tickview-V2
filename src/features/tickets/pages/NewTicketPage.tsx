@@ -1,16 +1,9 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Paperclip } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { supabase, type Category, type TicketPriority } from '../../../lib/supabase'
+import { supabase, type Category } from '../../../lib/supabase'
 import { useAuth } from '../../auth/hooks/useAuth'
-
-const PRIORITIES: { value: TicketPriority; label: string; desc: string }[] = [
-  { value: 'basse',   label: 'Basse',   desc: 'Peut attendre quelques jours' },
-  { value: 'normale', label: 'Normale', desc: 'Délai standard de traitement' },
-  { value: 'haute',   label: 'Haute',   desc: 'Besoin d\'une réponse rapide' },
-  { value: 'urgente', label: 'Urgente', desc: 'Impact critique sur l\'activité' },
-]
 
 export function NewTicketPage() {
   const { user, profile } = useAuth()
@@ -18,20 +11,21 @@ export function NewTicketPage() {
 
   const [categories, setCategories] = useState<Category[]>([])
   const [form, setForm] = useState({
-    title: '',
+    title:       '',
     description: '',
     category_id: '',
-    priority: 'normale' as TicketPriority,
   })
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (!profile?.organization_id) return
     supabase
       .from('categories')
       .select('*')
+      .eq('organization_id', profile.organization_id)
       .eq('is_active', true)
       .then(({ data }) => setCategories((data ?? []) as Category[]))
-  }, [])
+  }, [profile])
 
   const set = (key: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -49,9 +43,10 @@ export function NewTicketPage() {
         client_id:       user.id,
         title:           form.title.trim(),
         description:     form.description.trim(),
-        priority:        form.priority,
         category_id:     form.category_id || null,
-        status:          'ouvert' as const,
+        status:          'en_attente',
+        // priority defaults to 'normale' via DB (BLOC 1.6)
+        // assigned_to set automatically by trigger (BLOC 1.4)
       })
       .select()
       .single()
@@ -68,7 +63,7 @@ export function NewTicketPage() {
       action_type: 'creation',
       comment:     'Ticket créé par le client.',
       is_internal: false,
-      metadata:    { to_status: 'ouvert' },
+      metadata:    { to_status: 'en_attente' },
     })
 
     toast.success(`Plainte soumise — ${ticket.reference}`)
@@ -115,7 +110,7 @@ export function NewTicketPage() {
             <p className="text-xs text-slate-400 mt-1">{form.description.length}/1000</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {categories.length > 0 && (
             <div>
               <label className="field-label">Catégorie</label>
               <select className="field-select" value={form.category_id} onChange={set('category_id')}>
@@ -125,20 +120,7 @@ export function NewTicketPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="field-label">Niveau d'urgence suggéré</label>
-              <select className="field-select" value={form.priority} onChange={set('priority')}>
-                {PRIORITIES.map(p => (
-                  <option key={p.value} value={p.value}>{p.label} — {p.desc}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="border-2 border-dashed border-slate-200 rounded-xl p-5 text-center text-slate-400 hover:border-brand-300 hover:text-brand-500 transition-colors cursor-not-allowed">
-            <Paperclip size={20} className="mx-auto mb-2" />
-            <p className="text-sm">Pièces jointes (disponible prochainement)</p>
-          </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => navigate(-1)} className="btn-secondary flex-1 justify-center">
@@ -153,3 +135,4 @@ export function NewTicketPage() {
     </div>
   )
 }
+

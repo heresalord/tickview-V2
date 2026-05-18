@@ -2,8 +2,8 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Ticket, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import type { UserRole } from '../../../lib/supabase'
 
 const ROLE_HOME: Record<string, string> = {
   client: '/client', agent: '/agent', expert: '/expert',
@@ -20,9 +20,14 @@ export function RegisterPage() {
     }
   }, [session, role, navigate])
 
-  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({
+    first_name: '', last_name: '', email: '',
+    password: '', confirm: '',
+    organization_code: '',
+  })
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
+
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }))
 
@@ -30,12 +35,30 @@ export function RegisterPage() {
     e.preventDefault()
     if (form.password !== form.confirm) { toast.error('Les mots de passe ne correspondent pas.'); return }
     if (form.password.length < 8) { toast.error('Le mot de passe doit contenir au moins 8 caractères.'); return }
+    if (!form.organization_code.trim()) { toast.error('Le code organisation est requis.'); return }
     setLoading(true)
-    const { error } = await signUp(form.email, form.password, { first_name: form.first_name, last_name: form.last_name })
+
+    // Verify organization code FIRST
+    const { data: isValid, error: rpcError } = await supabase.rpc('verify_org_code', { p_code: form.organization_code.trim() })
+    if (rpcError || !isValid) {
+      toast.error('Code organisation invalide. Vérifiez le code fourni par votre administrateur.')
+      setLoading(false)
+      return
+    }
+
+    const { error } = await signUp(form.email, form.password, {
+      first_name:        form.first_name,
+      last_name:         form.last_name,
+      organization_code: form.organization_code.trim(),
+    })
     setLoading(false)
-    if (error) { toast.error(error.message || 'Erreur lors de la création du compte.'); return }
-    toast.success('Compte créé ! Vérifiez votre email pour confirmer.')
-    navigate('/login')
+    if (error) {
+      toast.error(error.message || 'Erreur lors de la création du compte.')
+      return
+    }
+    toast.success('Compte créé avec succès !')
+    // Le onAuthStateChange de useAuth va capter la connexion automatique et rediriger.
+    // Si la confirmation d'email est activée, l'utilisateur restera sur la page avec le toast.
   }
 
   return (
@@ -57,7 +80,7 @@ export function RegisterPage() {
           <h2 className="font-display text-xl text-slate-900 mb-1">Créer un compte</h2>
           <p className="text-sm text-slate-500 mb-6">Rejoignez TickView pour soumettre vos réclamations.</p>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="field-label">Prénom</label>
                 <input className="field-input" placeholder="Yémi" value={form.first_name} onChange={set('first_name')} required />
@@ -70,6 +93,25 @@ export function RegisterPage() {
             <div>
               <label className="field-label">Adresse email</label>
               <input type="email" className="field-input" placeholder="vous@exemple.bj" value={form.email} onChange={set('email')} required />
+            </div>
+            <div>
+              <label className="field-label">
+                Code organisation <span className="text-red-500">*</span>
+              </label>
+              <input
+                className="field-input font-mono uppercase tracking-widest"
+                placeholder="ORG-XXXXXX"
+                value={form.organization_code}
+                onChange={e => setForm(f => ({
+                  ...f,
+                  organization_code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')
+                }))}
+                required
+                maxLength={12}
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Code fourni par votre organisation. Contactez votre administrateur si vous ne l'avez pas.
+              </p>
             </div>
             <div>
               <label className="field-label">Mot de passe</label>
@@ -99,3 +141,4 @@ export function RegisterPage() {
     </div>
   )
 }
+

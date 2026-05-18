@@ -20,35 +20,6 @@ function Stat({ value, label }: { value: string; label: string }) {
   )
 }
 
-// ─── Feature row ──────────────────────────────────────────────────────────────
-function FeatureRow({
-  icon: Icon,
-  title,
-  description,
-  tag,
-}: {
-  icon: React.ElementType
-  title: string
-  description: string
-  tag: string
-}) {
-  return (
-    <div className="grid grid-cols-[1fr_auto] items-start gap-6 py-8 border-b border-slate-100 group">
-      <div className="flex items-start gap-5">
-        <div className="flex-shrink-0 mt-0.5 h-9 w-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 bg-white group-hover:border-brand-300 group-hover:text-brand-600 transition-colors">
-          <Icon size={17} strokeWidth={1.75} />
-        </div>
-        <div>
-          <p className="font-semibold text-slate-900 text-sm mb-1">{title}</p>
-          <p className="text-sm text-slate-500 leading-relaxed max-w-lg">{description}</p>
-        </div>
-      </div>
-      <span className="mt-0.5 text-xs font-mono text-slate-400 border border-slate-200 rounded-full px-2.5 py-1 whitespace-nowrap">
-        {tag}
-      </span>
-    </div>
-  )
-}
 
 // ─── Mock ticket card ─────────────────────────────────────────────────────────
 function MockTicketCard({
@@ -61,15 +32,15 @@ function MockTicketCard({
 }: {
   ref?: string
   title: string
-  status: 'ouvert' | 'en_cours' | 'resolu'
+  status: 'en_attente' | 'en_cours' | 'cloture'
   time: string
   priority: 'haute' | 'normale' | 'basse'
   initials: string
 }) {
   const statusConfig = {
-    ouvert:   { label: 'Ouvert',    dot: 'bg-slate-400' },
+    en_attente:   { label: 'En attente',    dot: 'bg-amber-400' },
     en_cours: { label: 'En cours',  dot: 'bg-brand-500 animate-pulse' },
-    resolu:   { label: 'Résolu',    dot: 'bg-green-500' },
+    cloture:   { label: 'Clôturé',    dot: 'bg-slate-400' },
   }
   const priorityConfig = {
     haute:   'text-red-600 bg-red-50',
@@ -123,7 +94,6 @@ export function LandingPage() {
           </div>
           <nav className="hidden md:flex items-center gap-1">
             <a href="#product" className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-50 transition-colors">Produit</a>
-            <a href="#features" className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-50 transition-colors">Fonctionnalités</a>
           </nav>
           <div className="flex items-center gap-2">
             <button onClick={handleCTA} className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-50 transition-colors font-medium">
@@ -197,7 +167,6 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex items-end justify-between mb-8">
             <div>
-              <p className="text-xs font-mono text-slate-400 mb-2">// aperçu du produit</p>
               <h2 className="text-2xl font-display font-bold text-slate-900">File de tickets en direct</h2>
             </div>
             <button onClick={handleCTA} className="hidden sm:inline-flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 font-medium">
@@ -249,14 +218,14 @@ export function LandingPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3 px-4">
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tickets récents</span>
-                  <span className="text-xs text-slate-400">12 ouverts</span>
+                  <span className="text-xs text-slate-400">12 en attente</span>
                 </div>
 
                 <MockTicketCard title="Impossible de réinitialiser mon mot de passe" status="en_cours" time="Il y a 3 min" priority="haute" initials="KD" />
-                <MockTicketCard title="Facture du mois de mars non reçue" status="ouvert" time="Il y a 15 min" priority="normale" initials="AM" />
+                <MockTicketCard title="Facture du mois de mars non reçue" status="en_attente" time="Il y a 15 min" priority="normale" initials="AM" />
                 <MockTicketCard title="Application mobile qui plante au démarrage" status="en_cours" time="Il y a 1 h" priority="haute" initials="SO" />
-                <MockTicketCard title="Demande de changement d'adresse de livraison" status="resolu" time="Il y a 2 h" priority="basse" initials="FN" />
-                <MockTicketCard title="Remboursement non crédité après 7 jours" status="ouvert" time="Il y a 3 h" priority="normale" initials="TB" />
+                <MockTicketCard title="Demande de changement d'adresse de livraison" status="cloture" time="Il y a 2 h" priority="basse" initials="FN" />
+                <MockTicketCard title="Remboursement non crédité après 7 jours" status="en_attente" time="Il y a 3 h" priority="normale" initials="TB" />
 
                 <div className="mt-3 px-4 pt-3 border-t border-slate-100">
                   <div className="h-2 w-32 bg-slate-100 rounded" />
@@ -267,63 +236,12 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ───────────────────────────────────────────────────────── */}
-      <section id="features" className="max-w-6xl mx-auto px-6 py-24">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-16">
-
-          {/* Left label */}
-          <div>
-            <p className="text-xs font-mono text-slate-400 mb-2">// fonctionnalités</p>
-            <h2 className="text-2xl font-display font-bold text-slate-900 leading-snug">
-              Tout ce qu'il faut.<br />Rien de plus.
-            </h2>
-            <p className="text-sm text-slate-500 mt-3 leading-relaxed">
-              Conçu pour les équipes qui veulent résoudre vite sans se noyer dans des outils complexes.
-            </p>
-          </div>
-
-          {/* Feature rows */}
-          <div>
-            <FeatureRow
-              icon={Users}
-              title="Multirôle natif"
-              description="Clients, agents, experts et admins partagent la même plateforme avec des interfaces adaptées. Chaque rôle voit exactement ce dont il a besoin."
-              tag="RBAC"
-            />
-            <FeatureRow
-              icon={Zap}
-              title="Temps réel"
-              description="Dès qu'un ticket est mis à jour, toutes les parties concernées sont notifiées instantanément. Fini les allers-retours par email."
-              tag="Realtime"
-            />
-            <FeatureRow
-              icon={Clock}
-              title="SLA automatisé"
-              description="Définissez des délais par priorité. Le système escalade automatiquement les tickets qui risquent de dépasser leur SLA avant qu'il soit trop tard."
-              tag="SLA Engine"
-            />
-            <FeatureRow
-              icon={BarChart3}
-              title="Analytics intégrées"
-              description="Tableau de bord KPI complet : temps de résolution, volume par statut, score de satisfaction. Prenez des décisions basées sur des données réelles."
-              tag="KPIs"
-            />
-            <FeatureRow
-              icon={Shield}
-              title="Sécurité par défaut"
-              description="Row Level Security Supabase, isolation par organisation, sessions courtes. Vos données clients ne sont accessibles qu'à ceux qui en ont le droit."
-              tag="RLS"
-            />
-          </div>
-        </div>
-      </section>
 
       {/* ── Dark CTA ───────────────────────────────────────────────────────── */}
       <section className="border-t border-slate-100">
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="rounded-2xl bg-slate-900 px-10 py-16 flex flex-col md:flex-row items-start md:items-end justify-between gap-8">
             <div>
-              <p className="text-xs font-mono text-slate-400 mb-3">// prêt à démarrer ?</p>
               <h2 className="text-3xl md:text-4xl font-display font-bold text-white leading-tight">
                 Votre équipe mérite<br />un meilleur support.
               </h2>
