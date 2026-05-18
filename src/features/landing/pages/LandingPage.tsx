@@ -96,14 +96,13 @@ export function LandingPage() {
             <a href="#product" className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-50 transition-colors">Produit</a>
           </nav>
           <div className="flex items-center gap-2">
-            <button onClick={handleCTA} className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-50 transition-colors font-medium">
+            <button
+              onClick={handleCTA}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors"
+            >
               {session ? 'Mon espace' : 'Se connecter'}
+              <ArrowRight size={14} />
             </button>
-            {!session && (
-              <Link to="/register" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors">
-                Commencer <ArrowRight size={14} />
-              </Link>
-            )}
           </div>
         </div>
       </header>
@@ -137,9 +136,6 @@ export function LandingPage() {
                 {session ? 'Aller au dashboard' : 'Créer un compte gratuit'}
                 <ArrowRight size={15} />
               </button>
-              <a href="#product" className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium text-slate-600 rounded-xl border border-slate-200 hover:border-slate-300 hover:text-slate-900 transition-colors">
-                Voir le produit
-              </a>
             </div>
 
             {/* Trust line */}
