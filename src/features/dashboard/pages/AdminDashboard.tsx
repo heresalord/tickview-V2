@@ -26,8 +26,15 @@ export function AdminDashboard() {
   const [orgCode, setOrgCode] = useState('')
 
   const [showMemberModal, setShowMemberModal] = useState(false)
-  const [memberEmail, setMemberEmail] = useState('')
-  const [memberRole, setMemberRole] = useState('client')
+  const [memberForm, setMemberForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    password: '',
+    phone: '',
+    role: 'client'
+  })
+  const [creatingUser, setCreatingUser] = useState(false)
 
   const [memberFilter, setMemberFilter] = useState('all')
 
@@ -145,9 +152,37 @@ export function AdminDashboard() {
     }
   }
 
+  const handleCreateMember = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!memberForm.email || !memberForm.password || !memberForm.first_name || !memberForm.last_name || !selectedOrgId) {
+      toast.error('Tous les champs obligatoires doivent être remplis.')
+      return
+    }
+    
+    setCreatingUser(true)
+    const { error } = await supabase.rpc('create_user_by_admin', {
+      p_email:      memberForm.email,
+      p_password:   memberForm.password,
+      p_role:       memberForm.role,
+      p_first_name: memberForm.first_name,
+      p_last_name:  memberForm.last_name,
+      p_phone:      memberForm.phone || null,
+      p_org_id:     selectedOrgId,
+    })
+
+    if (error) {
+      toast.error('Erreur : ' + error.message)
+    } else {
+      toast.success('Utilisateur créé avec succès.')
+      setShowMemberModal(false)
+      loadMembers(selectedOrgId)
+    }
+    setCreatingUser(false)
+  }
+
   const handleDeleteMember = async (id: string) => {
     if (!window.confirm('Supprimer ce membre ?')) return
-    const { error } = await supabase.from('profiles').delete().eq('id', id)
+    const { error } = await supabase.rpc('delete_user_by_admin', { p_user_id: id })
     if (error) toast.error(error.message)
     else if (selectedOrgId) loadMembers(selectedOrgId)
   }
@@ -225,7 +260,7 @@ export function AdminDashboard() {
                 <option value="expert">Experts</option>
               </select>
               <button
-                onClick={() => { setMemberEmail(''); setMemberRole('client'); setShowMemberModal(true) }}
+                onClick={() => { setMemberForm({ first_name: '', last_name: '', email: '', password: '', phone: '', role: 'client' }); setShowMemberModal(true) }}
                 className="btn-primary btn-sm px-2"
               >
                 <Plus size={16} />
@@ -362,7 +397,7 @@ export function AdminDashboard() {
                   </select>
                 </div>
                 <button 
-                  onClick={() => { setMemberEmail(''); setMemberRole('client'); setShowMemberModal(true) }}
+                  onClick={() => { setMemberForm({ first_name: '', last_name: '', email: '', password: '', phone: '', role: 'client' }); setShowMemberModal(true) }}
                   className="btn-primary btn-sm px-2 sm:px-3"
                 >
                   <Plus size={16} /> <span className="hidden sm:inline">Ajouter un membre</span>
@@ -509,32 +544,61 @@ export function AdminDashboard() {
                 <X size={20} />
               </button>
             </div>
-            <form className="p-6 space-y-4" onSubmit={(e) => {
-              e.preventDefault();
-              toast.success(`Invitation envoyée à ${memberEmail} en tant que ${memberRole}.`);
-              setShowMemberModal(false);
-            }}>
+            <form className="p-6 space-y-4" onSubmit={handleCreateMember}>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="field-label">Prénom <span className="text-red-500">*</span></label>
+                  <input className="field-input" value={memberForm.first_name} onChange={e => setMemberForm(f => ({ ...f, first_name: e.target.value }))} placeholder="Kofi" required />
+                </div>
+                <div>
+                  <label className="field-label">Nom <span className="text-red-500">*</span></label>
+                  <input className="field-input" value={memberForm.last_name} onChange={e => setMemberForm(f => ({ ...f, last_name: e.target.value }))} placeholder="Mensah" required />
+                </div>
+              </div>
+              
               <div>
-                <label className="field-label">Adresse email</label>
+                <label className="field-label">Adresse email <span className="text-red-500">*</span></label>
                 <input 
                   type="email"
                   className="field-input" 
-                  value={memberEmail} 
-                  onChange={e => setMemberEmail(e.target.value)} 
+                  value={memberForm.email} 
+                  onChange={e => setMemberForm(f => ({ ...f, email: e.target.value }))} 
+                  placeholder="kofi@exemple.bj"
                   required 
                 />
               </div>
+
+              <div>
+                <label className="field-label">Mot de passe <span className="text-red-500">*</span></label>
+                <input 
+                  type="password"
+                  className="field-input" 
+                  value={memberForm.password} 
+                  onChange={e => setMemberForm(f => ({ ...f, password: e.target.value }))} 
+                  placeholder="Min. 8 caractères"
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="field-label">Téléphone</label>
+                <input className="field-input" value={memberForm.phone} onChange={e => setMemberForm(f => ({ ...f, phone: e.target.value }))} placeholder="+229 61 00 00 00" />
+              </div>
+
               <div>
                 <label className="field-label">Rôle</label>
-                <select className="field-select" value={memberRole} onChange={e => setMemberRole(e.target.value)}>
+                <select className="field-select" value={memberForm.role} onChange={e => setMemberForm(f => ({ ...f, role: e.target.value }))}>
                   <option value="client">Client</option>
                   <option value="agent">Agent</option>
                   <option value="expert">Expert</option>
+                  <option value="admin">Administrateur</option>
                 </select>
               </div>
               <div className="flex justify-end gap-2 pt-4">
                 <button type="button" onClick={() => setShowMemberModal(false)} className="btn-secondary">Annuler</button>
-                <button type="submit" className="btn-primary">Envoyer l'invitation</button>
+                <button type="submit" disabled={creatingUser} className="btn-primary">
+                  {creatingUser ? 'Création...' : 'Créer le membre'}
+                </button>
               </div>
             </form>
           </div>

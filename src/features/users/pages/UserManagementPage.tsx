@@ -51,14 +51,15 @@ function CreateUserModal({ orgId, onClose, onCreated }: CreateUserModalProps) {
     }
     setLoading(true)
 
-    // Call the create_test_user DB function (works for any env)
-    const { data, error } = await supabase.rpc('create_test_user', {
+    // Call the create_user_by_admin DB function
+    const { data, error } = await supabase.rpc('create_user_by_admin', {
       p_email:      form.email,
       p_password:   form.password,
       p_role:       form.role,
       p_first_name: form.first_name,
       p_last_name:  form.last_name,
       p_phone:      form.phone || null,
+      p_org_id:     orgId,
     })
 
     if (error) {
